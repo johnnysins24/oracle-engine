@@ -3,11 +3,18 @@ The Oracle Engine - Universal AI Horoscope API
 Main FastAPI Application Entry Point
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.routers import v1_tarot, v1_horoscope, v1_thai, v1_ai
+
+# Rate limiter setup
+limiter = Limiter(key_func=get_remote_address)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -40,13 +47,22 @@ app = FastAPI(
     ]
 )
 
-# CORS middleware for cross-origin requests
+# Attach rate limiter to app
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# CORS middleware - whitelist only allowed origins
+ALLOWED_ORIGINS = [
+    "https://oracle-web-nine.vercel.app",
+    "http://localhost:3000",  # Local development
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Include routers

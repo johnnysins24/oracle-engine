@@ -3,9 +3,11 @@ AI Interpretation API Router
 Endpoints for AI-powered fortune interpretation
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 from app.core.ai_client import generate_interpretation
 from app.core.prompts import (
@@ -21,6 +23,9 @@ from app.engines.thai_astrology import get_thai_reading
 from app.engines.astrology import calculate_natal_chart
 
 router = APIRouter(prefix="/v1/ai", tags=["AI Interpretation"])
+
+# Rate limiter - 10 requests per minute for AI endpoints
+limiter = Limiter(key_func=get_remote_address)
 
 
 # ============================================================================
@@ -81,7 +86,8 @@ class InterpretResponse(BaseModel):
 # ============================================================================
 
 @router.post("/tarot", response_model=InterpretResponse, summary="AI Tarot Reading 🔮")
-async def interpret_tarot(request: TarotInterpretRequest):
+@limiter.limit("10/minute")
+async def interpret_tarot(request: Request, body: TarotInterpretRequest):
     """
     Draw tarot cards and get AI interpretation.
     
@@ -92,19 +98,19 @@ async def interpret_tarot(request: TarotInterpretRequest):
     Uses the "แม่หมอยิปซี" (Gypsy Fortune Teller) persona for Thai readings.
     """
     # Draw cards based on count - functions return tuple (cards, spread_type, positions)
-    if request.count == 1:
+    if body.count == 1:
         card, spread_type, positions = draw_single()
         cards = [card]  # Single card needs to be wrapped in list
-    elif request.count == 3:
+    elif body.count == 3:
         cards, spread_type, positions = draw_three()
-    elif request.count == 10:
+    elif body.count == 10:
         cards, spread_type, positions = draw_celtic_cross()
     else:
         card, spread_type, positions = draw_single()
         cards = [card]
     
     # Build prompt
-    prompt = build_tarot_prompt(cards, request.question, spread_type, request.lang)
+    prompt = build_tarot_prompt(cards, body.question, spread_type, body.lang)
     
     # Get AI interpretation
     system_prompt = TAROT_GYPSY_PROMPT
@@ -121,7 +127,8 @@ async def interpret_tarot(request: TarotInterpretRequest):
 
 
 @router.post("/thai", response_model=InterpretResponse, summary="AI Thai Fortune 🇹🇭")
-async def interpret_thai(request: ThaiInterpretRequest):
+@limiter.limit("10/minute")
+async def interpret_thai(request: Request, body: ThaiInterpretRequest):
     """
     Get AI Thai fortune reading based on birth data.
     
@@ -131,10 +138,10 @@ async def interpret_thai(request: ThaiInterpretRequest):
     """
     try:
         # Get Thai reading data
-        reading = get_thai_reading(request.birth_date, request.birth_time)
+        reading = get_thai_reading(body.birth_date, body.birth_time)
         
         # Build prompt
-        prompt = build_thai_prompt(reading, request.question)
+        prompt = build_thai_prompt(reading, body.question)
         
         # Get AI interpretation
         interpretation = await generate_interpretation(prompt, system_instruction=THAI_FORTUNE_PROMPT)
@@ -152,7 +159,8 @@ async def interpret_thai(request: ThaiInterpretRequest):
 
 
 @router.post("/natal", response_model=InterpretResponse, summary="AI Natal Chart Reading ⭐")
-async def interpret_natal(request: NatalInterpretRequest):
+@limiter.limit("10/minute")
+async def interpret_natal(request: Request, body: NatalInterpretRequest):
     """
     Get AI interpretation of Western natal chart.
     
@@ -161,26 +169,26 @@ async def interpret_natal(request: NatalInterpretRequest):
     try:
         # Calculate natal chart
         chart = calculate_natal_chart(
-            request.birth_date,
-            request.birth_time,
-            request.latitude,
-            request.longitude,
-            request.timezone_offset
+            body.birth_date,
+            body.birth_time,
+            body.latitude,
+            body.longitude,
+            body.timezone_offset
         )
         
         # Build prompt
-        prompt = build_natal_prompt(chart, request.question, request.lang)
+        prompt = build_natal_prompt(chart, body.question, body.lang)
         
         # Get AI interpretation
-        system_prompt = THAI_FORTUNE_PROMPT if request.lang == "th" else WESTERN_ASTROLOGER_PROMPT
+        system_prompt = THAI_FORTUNE_PROMPT if body.lang == "th" else WESTERN_ASTROLOGER_PROMPT
         interpretation = await generate_interpretation(prompt, system_instruction=system_prompt)
         
         return InterpretResponse(
             interpretation=interpretation,
             data={
-                "sun_sign": chart["sun_sign"]["name_th"] if request.lang == "th" else chart["sun_sign"]["name_en"],
-                "moon_sign": chart["moon_sign"]["name_th"] if request.lang == "th" else chart["moon_sign"]["name_en"],
-                "ascendant": chart["ascendant"]["name_th"] if request.lang == "th" else chart["ascendant"]["name_en"]
+                "sun_sign": chart["sun_sign"]["name_th"] if body.lang == "th" else chart["sun_sign"]["name_en"],
+                "moon_sign": chart["moon_sign"]["name_th"] if body.lang == "th" else chart["moon_sign"]["name_en"],
+                "ascendant": chart["ascendant"]["name_th"] if body.lang == "th" else chart["ascendant"]["name_en"]
             }
         )
     except Exception as e:
