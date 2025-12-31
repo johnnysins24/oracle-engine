@@ -27,18 +27,60 @@ ALLOWED_TOPICS_EN = [
 # ============================================================================
 
 BLOCKED_PATTERNS = [
-    r"ignore\s*(previous|above|all)",
-    r"forget\s*(previous|above|all)",
+    # === ENGLISH PATTERNS ===
+    # Forget/Ignore commands
+    r"ignore\s*(previous|above|all|your|the|base|original)",
+    r"forget\s*(previous|above|all|your|the|everything)",
     r"disregard",
-    r"system\s*prompt",
-    r"you\s*are\s*now",
-    r"pretend\s*to\s*be",
-    r"act\s*as",
-    r"new\s*instructions?",
+    r"do\s*not\s*follow",
+    r"stop\s*following",
+    r"reset\s*(your|the)?\s*(instructions?|rules?|prompt)?",
+    
+    # New persona/role commands
+    r"you\s*are\s*(now|a|an|the)",
+    r"pretend\s*(to\s*be|you\s*are)",
+    r"act\s*(as|like)",
+    r"become\s*(a|an|the)",
+    r"roleplay\s*as",
+    r"from\s*now\s*on",
+    r"your\s*new\s*(role|persona|identity)",
+    r"switch\s*to",
+    
+    # Override/bypass commands
     r"override",
+    r"bypass",
+    r"jailbreak",
+    r"unlock",
+    r"developer\s*mode",
+    r"admin\s*mode",
+    r"god\s*mode",
+    
+    # System prompt attacks
+    r"system\s*prompt",
+    r"original\s*prompt",
+    r"base\s*prompt",
+    r"new\s*instructions?",
+    r"secret\s*instructions?",
+    
+    # Code injection markers
     r"</?(system|user|assistant)>",
     r"\[INST\]",
-    r"```(system|prompt)",
+    r"\[/INST\]",
+    r"```(system|prompt|instructions?)",
+    r"<\|.*\|>",
+    
+    # === THAI PATTERNS ===
+    r"ลืม.*ก่อนหน้า",
+    r"ลืม.*ทั้งหมด",
+    r"ไม่ต้อง.*ตาม",
+    r"เปลี่ยน.*เป็น",
+    r"สมมติ.*ว่า.*เป็น",
+    r"แกล้ง.*ทำ.*เป็น",
+    r"เลิก.*ทำตาม",
+    r"ข้าม.*คำสั่ง",
+    r"ไม่ต้อง.*สนใจ",
+    r"หยุด.*เป็น",
+    r"ตอนนี้.*เป็น",
 ]
 
 # Maximum question length
