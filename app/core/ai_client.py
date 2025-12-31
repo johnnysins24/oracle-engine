@@ -29,7 +29,7 @@ async def generate_interpretation(
     system_instruction: Optional[str] = None,
     model_name: str = "gemini-2.0-flash-exp",
     temperature: float = 0.9,
-    max_tokens: int = 1024
+    max_tokens: int = 512
 ) -> str:
     """
     Generate AI interpretation using Gemini.
